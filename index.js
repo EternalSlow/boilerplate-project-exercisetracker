@@ -1,3 +1,4 @@
+process.env.TZ = 'UTC';
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
@@ -11,7 +12,7 @@ app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// MongoDB Connection
+// MongoDB Connection - removed deprecated options
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/exercise-tracker';
 mongoose.connect(MONGO_URI);
 
@@ -64,6 +65,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
+
 // 3. POST /api/users/:_id/exercises - Add an exercise to a user
 app.post('/api/users/:_id/exercises', async (req, res) => {
   try {
@@ -92,7 +94,7 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
     if (date) {
       exerciseDate = new Date(date);
       if (isNaN(exerciseDate.getTime())) {
-        exerciseDate = new Date(); // fallback to current date if invalid
+        exerciseDate = new Date();
       }
     } else {
       exerciseDate = new Date();
@@ -108,6 +110,7 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
     await exercise.save();
 
     // Return response with user object + exercise fields
+    // Using toDateString() to ensure the expected format
     res.json({
       username: user.username,
       _id: user._id,
@@ -135,18 +138,17 @@ app.get('/api/users/:_id/logs', async (req, res) => {
     // Build query for exercises
     let query = { userId: _id };
 
-    // Date range filtering
     if (from) {
       const fromDate = new Date(from);
       if (!isNaN(fromDate.getTime())) {
-        fromDate.setHours(0, 0, 0, 0);
+        fromDate.setUTCHours(0, 0, 0, 0);
         query.date = { ...query.date, $gte: fromDate };
       }
     }
     if (to) {
       const toDate = new Date(to);
       if (!isNaN(toDate.getTime())) {
-        toDate.setHours(23, 59, 59, 999);
+        toDate.setUTCHours(23, 59, 59, 999);
         query.date = { ...query.date, $lte: toDate };
       }
     }
@@ -165,7 +167,7 @@ app.get('/api/users/:_id/logs', async (req, res) => {
 
     const exercises = await exercisesQuery;
 
-    // Format the log array
+    // Format the log array using toDateString() for the date property
     const log = exercises.map(ex => ({
       description: ex.description,
       duration: ex.duration,
